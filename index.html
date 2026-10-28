@@ -1,103 +1,207 @@
 <!doctype html>
 <html lang="ja">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1">
   <title>QRコード生成デモ</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 24px auto; padding: 0 16px; line-height: 1.5; }
-    label { display: block; margin: 10px 0; }
-    input, button { font: inherit; padding: 8px 12px; }
-    button { cursor: pointer; }
-    #resultPage { display: none; }
-    #qrcode { margin: 16px 0; }
-    #qrcode img, #qrcode canvas { display: block; }
-    pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 24px auto;
+      padding: 0 16px;
+      line-height: 1.5;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0;
+    }
+
+    input,
+    button {
+      font: inherit;
+      padding: 8px 12px;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    #resultPage {
+      display: none;
+    }
+
+    /* ==========================================
+       この #qrCard の中で自由にスタイルやレイアウトを調整できます！
+       ========================================== */
+    #qrCard {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 32px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      background: #fff4f4;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    /* アバター画像のスタイル */
+    .avatar-img {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      /* 円形にする */
+      object-fit: cover;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    }
+
+    #qrTitle {
+      margin: 0;
+      text-align: center;
+      color: #333;
+      font-size: 24px;
+    }
+
+    #qrcode img,
+    #qrcode canvas {
+      display: block;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
   </style>
 </head>
+
 <body>
   <section id="formPage">
     <h1>QRコード生成デモ</h1>
     <form id="generateForm">
-      <label>ニックネーム：<input id="username" value="Yuki" maxlength="30" required></label>
-      <label>アバターID：<input id="avatarId" type="number" min="1" max="12" value="3" required></label>
-      <label>ゲーム結果：<input id="result" value="Explorer" maxlength="30"></label>
+      <label>画像タイトル：<input id="title"
+               value="QRコード"
+               maxlength="60"
+               required></label>
+      <label>ニックネーム：<input id="username"
+               value="Yuki"
+               maxlength="30"
+               required></label>
+      <label>アバターID (1〜12)：<input id="avatarId"
+               type="number"
+               min="1"
+               max="12"
+               value="3"
+               required></label>
+      <label>ゲーム結果：<input id="result"
+               value="Explorer"
+               maxlength="30"></label>
       <button type="submit">QRコードを生成</button>
     </form>
   </section>
 
   <section id="resultPage">
     <h1>生成されたQRコード</h1>
-    <div id="qrcode"></div>
+
+    <!-- エクスポート対象の領域（アバターを追加） -->
+    <div id="qrCard">
+      <img id="qrAvatar"
+           src=""
+           alt="アバター"
+           class="avatar-img">
+      <h2 id="qrTitle"></h2>
+      <div id="qrcode"></div>
+    </div>
+
     <h2>QRコードのデータ</h2>
     <pre id="payload"></pre>
-    <button id="download" type="button">QRコードをダウンロード</button>
-    <button id="back" type="button">戻って再生成</button>
+    <button id="download"
+            type="button">QRコードをダウンロード</button>
+    <button id="back"
+            type="button">戻って再生成</button>
   </section>
 
+  <!-- QRコード生成ライブラリ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- DOMをCanvasに変換してエクスポートするライブラリ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
   <script>
-    const $ = (id) => document.getElementById(id);
+    const $ = (id) => document.getElementById(id)
 
     $("generateForm").addEventListener("submit", (event) => {
-      event.preventDefault();
+      event.preventDefault()
 
+      const title = $("title").value.trim()
+      const avatarId = Number($("avatarId").value)
       const data = {
         username: $("username").value.trim(),
-        avatarId: Number($("avatarId").value),
+        avatarId: avatarId,
         gameResult: $("result").value.trim()
-      };
+      }
 
+      if (!title) {
+        alert("画像タイトルを入力してください。")
+        return
+      }
       if (!data.username) {
-        alert("ニックネームを入力してください。");
-        return;
+        alert("ニックネームを入力してください。")
+        return
       }
-      if (!Number.isInteger(data.avatarId) || data.avatarId < 1) {
-        alert("アバターIDには1以上の整数を入力してください。");
-        return;
+      if (!Number.isInteger(avatarId) || avatarId < 1 || avatarId > 12) {
+        alert("アバターIDには1〜12の整数を入力してください。")
+        return
       }
 
-      $("payload").textContent = JSON.stringify(data, null, 2);
-      $("qrcode").innerHTML = "";
+      $("qrAvatar").src = 'cat.jpg'
+
+      $("payload").textContent = JSON.stringify(data, null, 2)
+      $("qrTitle").textContent = title
+      $("qrcode").innerHTML = ""
+
+      // QRコードを生成
       new QRCode($("qrcode"), {
         text: JSON.stringify(data),
-        width: 240,
-        height: 240,
+        width: 200,
+        height: 200,
         correctLevel: QRCode.CorrectLevel.M
-      });
+      })
 
-      $("formPage").style.display = "none";
-      $("resultPage").style.display = "block";
-    });
+      $("formPage").style.display = "none"
+      $("resultPage").style.display = "block"
+    })
 
-    $("download").addEventListener("click", () => {
-      const canvas = $("qrcode").querySelector("canvas");
-      const img = $("qrcode").querySelector("img");
-      let dataUrl = "";
+    // 画像ダウンロードのロジック（html2canvasを使用）
+    $("download").addEventListener("click", async () => {
+      const card = $("qrCard")
 
-      if (canvas) {
-        dataUrl = canvas.toDataURL("image/png");
-      } else if (img && img.src) {
-        dataUrl = img.src;
+      try {
+        const canvas = await html2canvas(card, {
+          scale: 2,
+          useCORS: true
+        })
+
+        const link = document.createElement("a")
+        link.href = canvas.toDataURL("image/png")
+        link.download = "qr-card-with-avatar.png"
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+      } catch (err) {
+        console.error(err)
+        alert("画像の生成に失敗しました。もう一度お試しください。")
       }
-
-      if (!dataUrl) {
-        alert("QRコードがまだ生成されていません。戻ってもう一度お試しください。");
-        return;
-      }
-
-      const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = "qr-code.png";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    });
+    })
 
     $("back").addEventListener("click", () => {
-      $("resultPage").style.display = "none";
-      $("formPage").style.display = "block";
+      $("resultPage").style.display = "none"
+      $("formPage").style.display = "block"
     });
   </script>
 </body>
+
 </html>
